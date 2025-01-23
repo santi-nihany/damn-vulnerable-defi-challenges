@@ -47,6 +47,11 @@ contract SideEntranceChallenge is Test {
      */
     function test_sideEntrance() public checkSolvedByPlayer {
         MaliciousReceiver hacker = new MaliciousReceiver(address(pool));
+        // brief solution exp:
+        // transfer msg.value to MalRec and then deposit back
+        // pool checks balance and is ok, but the balances array stores that the malRec has msg.value of balance
+        // withdraw
+        // transfer to recovery
         hacker.attack(recovery, ETHER_IN_POOL);
     }
 
