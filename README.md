@@ -8,6 +8,7 @@
 - [x] side-entrance
 - [x] the-rewarder
 - [x] selfie
+- [x] compromised
 
 Damn Vulnerable DeFi is _the_ smart contract security playground for developers, security researchers and educators.
 
