@@ -1,6 +1,6 @@
 # Damn Vulnerable DeFi
 
-10/18
+11/18
 
 - [x] unstoppable
 - [x] naive-receiver
@@ -12,6 +12,7 @@
 - [x] puppet
 - [x] puppet-v2
 - [x] free-rider
+- [x] backdoor
 
 Damn Vulnerable DeFi is _the_ smart contract security playground for developers, security researchers and educators.
 

