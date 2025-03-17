@@ -1,20 +1,25 @@
 # Damn Vulnerable DeFi
 
-12/18
+13/18
 
-- [x] unstoppable
-- [x] naive-receiver
-- [x] truster
-- [x] side-entrance
-- [x] the-rewarder
-- [x] selfie
-- [x] compromised
-- [x] puppet
-- [x] puppet-v2
-- [x] free-rider
-- [x] backdoor
-
-- [x] abi-smuggling
+1. unstoppable [x]
+2. naive-receiver [x]
+3. truster [x]
+4. side-entrance [x]
+5. the-rewarder [x]
+6. selfie [x]
+7. compromised [x]
+8. puppet [x]
+9. puppet-v2 [x]
+10. free-rider [x]
+11. backdoor [x]
+12. climber [x]
+13. wallet-mining []
+14. puppet-v3 []
+15. abi-smuggling [x]
+16. shards []
+17. curvy-puppet []
+18. withdrawal []
 
 Damn Vulnerable DeFi is _the_ smart contract security playground for developers, security researchers and educators.
 
